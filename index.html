@@ -338,7 +338,7 @@
       if (IN_GAS) {
         return new Promise(function (resolve, reject) {
           var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
-          if (action === 'config') r.getConfig(); else r.answerQuestion(data.question, data.accessCode, data.scope || null);
+          if (action === 'config') r.getConfig(); else r.answerQuestion(data.question, data.accessCode, data.scope || null, data.history || []);
         });
       }
       if (!API_URL || API_URL.indexOf('여기에') >= 0) return Promise.reject(new Error('NO_API_URL'));
@@ -354,6 +354,7 @@
     function refTitle(r) { return (r && (r.title || prettyName(r.file))) || ''; }
     var guide = { sig: null, touched: false };
     var scope = null;   // { path: ['기간제교사', '맞춤형복지비', '경북'], node }
+    var history = [];   // 앞선 대화 [{q, a}] — 이어지는 질문("그럼 기간은?")을 이해하도록 함께 보냅니다
     function menuData() {
       var m = cfg.menu;
       return m && !Array.isArray(m) && m.nodes ? m : { ask: '', nodes: [] };
@@ -417,6 +418,7 @@
     }
     function setScope(s) {
       scope = s;
+      history = [];   // 분류를 바꾸면 앞선 대화는 잊고 새로 시작
       $('scopeBar').classList.toggle('hidden', !s);
       $('scopePath').textContent = s ? s.path.join(' › ') : '';
       input.placeholder = s ? '「' + s.path[s.path.length - 1] + '」에 대해 물어보세요' : '궁금한 내용을 입력하세요';
@@ -584,10 +586,12 @@
       var shell = addBotShell();
       scrollDown();
       setWaiting(true);
-      api('ask', { question: text, accessCode: accessCode, scope: scope ? scope.path : null }).then(function (res) {
+      api('ask', { question: text, accessCode: accessCode, scope: scope ? scope.path : null, history: history.slice(-5) }).then(function (res) {
           setWaiting(false);
           if (res && res.ok) {
             fillBot(shell, res.answer, res.sources, res.refs);
+            history.push({ q: text, a: stripSourceLine(res.answer).slice(0, 800) });
+            if (history.length > 5) history.shift();
             if (typeof res.remaining === 'number' && res.remaining <= 20) {
               $('foot').textContent = '오늘 남은 질문 ' + res.remaining + '회 · 중요한 내용은 원문으로 확인해 주세요.';
             }
