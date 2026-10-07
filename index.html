@@ -544,8 +544,12 @@
     function addBotShell() {
       var d = document.createElement('div');
       d.className = 'msg bot';
-      d.innerHTML = '<div class="avatar">' + AVATAR + '</div><div class="body"><div class="card"><span class="typing"><span class="dots"><i></i><i></i><i></i></span>자료를 찾고 있어요</span></div></div>';
+      d.innerHTML = '<div class="avatar">' + AVATAR + '</div><div class="body"><div class="card"><span class="typing"><span class="dots"><i></i><i></i><i></i></span><span class="tx">자료를 찾고 있어요</span></span></div></div>';
       $('messages').appendChild(d);
+      // 기다리는 동안 지금 무엇을 하는지 바꿔 보여 줍니다.
+      [[2500, '자료를 읽고 답을 정리하고 있어요'], [9000, '내용이 많아 조금 더 걸려요. 거의 다 됐어요']].forEach(function (s) {
+        setTimeout(function () { var tx = d.querySelector('.typing .tx'); if (tx) tx.textContent = s[1]; }, s[0]);
+      });
       return d;
     }
     function stripSourceLine(text) {
