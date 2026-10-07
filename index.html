@@ -113,17 +113,9 @@
     .rowbtn .qi { width: 26px; height: 26px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex: none; }
     .rowbtn .qi svg { width: 14px; height: 14px; }
 
-    /* 질문 요령 */
-    .tip { background: var(--surface); border-radius: 16px; padding: 14px 16px 16px; }
-    .tip-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 14.5px; line-height: 1.5; }
-    .tip-row .tag { flex: none; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 3px 8px; margin-top: 1px; }
-    .tip-row.good .tag { background: #e7f7ef; color: #12a066; }
-    .tip-row.bad .tag { background: #f2f4f6; color: var(--text-3); }
-    .tip-row.bad .txt { color: var(--text-3); text-decoration: line-through; text-decoration-color: #c5ccd3; }
-    .tip-row.good button { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: var(--text); font-weight: 600; font-size: 14.5px; line-height: 1.5; }
-    .tip-row.good button:hover { color: var(--primary); }
-    .tip-row .go { display: block; font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 2px; }
-    .tip ul { margin: 10px 0 0; padding: 12px 0 0 18px; border-top: 1px solid #f2f4f6; font-size: 13.5px; color: var(--text-2); line-height: 1.65; }
+    .rowbtn .qf { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .rowbtn .qf svg { width: 12px; height: 12px; flex: none; }
+    .leaf-hint { font-size: 13px; color: var(--text-3); margin: -2px 2px 10px; }
 
     /* 언제든 여는 주제 메뉴 */
     .sheet-wrap { position: fixed; inset: 0; background: rgba(25, 31, 40, .45); z-index: 9; display: flex; align-items: flex-end; justify-content: center; animation: fade .2s both; }
@@ -273,26 +265,14 @@
           </svg>
         </div>
         <h1>안녕하세요!<br>무엇이 궁금하세요?</h1>
-        <p id="welcomeSub">등록된 학교 자료에서 찾아 답해 드려요.<br>주제를 골라 질문을 누르거나, 직접 물어보세요.</p>
+        <p id="welcomeSub">등록된 자료에서 찾아 답해 드려요.<br>주제를 고르면 물어볼 수 있는 질문 예시를 보여 드려요.</p>
         <div id="menuSec" class="hidden">
-          <div class="sec-title">주제별로 찾아보기</div>
+          <div class="sec-title">주제를 골라 보세요</div>
           <div id="menuView"></div>
         </div>
         <div id="faqSec" class="hidden">
           <div class="sec-title">자주 묻는 질문</div>
           <div class="suggest" id="suggest"></div>
-        </div>
-        <div id="tipSec">
-          <div class="sec-title">이렇게 물어보면 더 자세히 답해요</div>
-          <div class="tip">
-            <div class="tip-row good" id="tipGoodRow"><span class="tag">좋은 예</span><span class="txt"><button type="button" id="tipGood"></button><span class="go">눌러서 물어보기 ›</span></span></div>
-            <div class="tip-row bad" id="tipBadRow"><span class="tag">아쉬운 예</span><span class="txt" id="tipBad"></span></div>
-            <ul>
-              <li><b>무엇에 대해</b> + <b>무엇이 궁금한지</b>(기간·방법·대상·준비물)를 함께 적어 주세요.</li>
-              <li>한 번에 한 가지씩 물어보면 더 정확해요.</li>
-              <li>문서에 나오는 낱말(예: 방과후학교, 체험학습)을 쓰면 더 잘 찾아요.</li>
-            </ul>
-          </div>
         </div>
       </section>
       <div id="messages"></div>
@@ -348,8 +328,7 @@
 
     var ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
     var cfg = {
-      requireCode: false, title: '포스코 교육재단 챗봇', suggestions: [], menu: [],
-      tipGood: '2학기 방과후학교 신청 기간과 신청 방법을 알려줘', tipBad: '방과후?'
+      requireCode: false, title: '포스코 교육재단 챗봇', suggestions: [], menu: []
     };
     var accessCode = '';
     var waiting = false;
@@ -387,10 +366,15 @@
 
     // ---------------------------------------------------------------- 주제별 질문 메뉴 (1차 → 2차 → 질문)
     function qCount(c) { return c.questions.length + c.subs.reduce(function (a, s) { return a + s.questions.length; }, 0); }
+    function qText(x) { return typeof x === 'string' ? x : (x && x.q) || ''; }
+    function qFile(x) { return typeof x === 'string' ? '' : (x && x.file) || ''; }
+    var ICON_DOC_SM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
     function makeMenu(el, onPick) {
       var st = { a: null, b: null };
-      function qrow(q, key) {
-        return '<button type="button" class="rowbtn" data-q="' + key + '"><span class="qi">' + ICON_Q + '</span><span class="t">' + esc(q) + '</span>' + ICON_CHEV + '</button>';
+      function qrow(x, key) {
+        var f = qFile(x);
+        return '<button type="button" class="rowbtn" data-q="' + key + '"><span class="qi">' + ICON_Q + '</span><span class="t">' + esc(qText(x)) +
+          (f ? '<span class="qf">' + ICON_DOC_SM + esc(f) + '에서 답해요</span>' : '') + '</span>' + ICON_CHEV + '</button>';
       }
       function draw() {
         var tree = cfg.menu || [];
@@ -399,7 +383,7 @@
         if (st.a === null) {
           el.innerHTML = '<div class="tiles">' + tree.map(function (c, i) {
             return '<button type="button" class="tile" data-a="' + i + '"><span class="ic">' + esc(Array.from(c.name)[0] || '?') + '</span>' +
-              '<span class="nm">' + esc(c.name) + '</span><span class="ct">질문 ' + qCount(c) + '개</span></button>';
+              '<span class="nm">' + esc(c.name) + '</span><span class="ct">질문 예시 ' + qCount(c) + '개</span></button>';
           }).join('') + '</div>';
           return;
         }
@@ -407,11 +391,13 @@
         var html = '<div class="crumb"><button type="button" data-back="' + (st.b === null ? 'top' : 'a') + '">' + ICON_BACK +
           (st.b === null ? '전체 주제' : esc(c1.name)) + '</button><span class="here">' + esc(st.b === null ? c1.name : c1.subs[st.b].name) + '</span></div><div class="rows">';
         if (st.b === null) {
+          if (!c1.subs.length) html = html.replace('<div class="rows">', '<div class="leaf-hint">이런 질문을 할 수 있어요 · 누르면 바로 물어봐요</div><div class="rows">');
           html += c1.subs.map(function (s, j) {
             return '<button type="button" class="rowbtn" data-b="' + j + '"><span class="t">' + esc(s.name) + '</span><span class="ct">' + s.questions.length + '개</span>' + ICON_CHEV + '</button>';
           }).join('');
           html += c1.questions.map(function (q, k) { return qrow(q, 'd' + k); }).join('');
         } else {
+          html = html.replace('<div class="rows">', '<div class="leaf-hint">이런 질문을 할 수 있어요 · 누르면 바로 물어봐요</div><div class="rows">');
           html += c1.subs[st.b].questions.map(function (q, k) { return qrow(q, 's' + k); }).join('');
         }
         el.innerHTML = html + '</div>';
@@ -426,7 +412,7 @@
         else if (t.dataset.q != null && c1) {
           var key = t.dataset.q;
           var list = key.charAt(0) === 'd' ? c1.questions : c1.subs[st.b].questions;
-          var q = list[Number(key.slice(1))];
+          var q = qText(list[Number(key.slice(1))]);
           if (q) onPick(q);
         }
       });
@@ -440,7 +426,6 @@
     $('closeMenu').addEventListener('click', closeSheet);
     $('menuSheet').addEventListener('click', function (e) { if (e.target === $('menuSheet')) closeSheet(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
-    $('tipGood').addEventListener('click', function () { if (cfg.tipGood) ask(cfg.tipGood); });
 
     // 지난번 설정을 먼저 보여 주고(빠른 첫 화면), 최신 설정을 받아 바꿉니다.
     init(cfg);
@@ -472,11 +457,6 @@
       $('openMenu').classList.toggle('hidden', !hasMenu);
       welcomeMenu.draw();
       sheetMenu.draw();
-      $('tipGood').textContent = cfg.tipGood || '';
-      $('tipBad').textContent = cfg.tipBad || '';
-      $('tipGoodRow').classList.toggle('hidden', !cfg.tipGood);
-      $('tipBadRow').classList.toggle('hidden', !cfg.tipBad);
-      $('tipSec').classList.toggle('hidden', !cfg.tipGood && !cfg.tipBad);
       if (cfg.requireCode && !accessCode && $('gate').classList.contains('hidden')) openGate();
     }
     $('suggest').addEventListener('click', function (e) {
