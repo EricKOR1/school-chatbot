@@ -143,6 +143,13 @@
     .card li::marker { color: var(--text-3); }
     .card strong { font-weight: 700; }
     .card .h { font-weight: 700; margin-top: 4px; }
+    .card .tbl { overflow-x: auto; margin: 4px 0 12px; border: 1px solid var(--line); border-radius: 12px; -webkit-overflow-scrolling: touch; }
+    .card .tbl:last-child { margin-bottom: 0; }
+    .card table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.5; }
+    .card th, .card td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .card td { white-space: normal; min-width: 72px; word-break: keep-all; }
+    .card th { background: var(--fill); font-weight: 700; color: var(--text-2); font-size: 13px; }
+    .card tbody tr:last-child td { border-bottom: 0; }
     .card code { background: var(--fill); padding: 1px 6px; border-radius: 6px; font-size: .92em; }
     .sources { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
     .sources .label { font-size: 12px; font-weight: 600; color: var(--text-3); margin-bottom: 8px; }
@@ -640,15 +647,29 @@
       var html = '', list = null, para = [];
       var flushPara = function () { if (para.length) { html += '<p>' + inline(para.join('<br>')) + '</p>'; para = []; } };
       var closeList = function () { if (list) { html += '</' + list + '>'; list = null; } };
-      lines.forEach(function (raw) {
-        var line = raw.trim(), m;
-        if (!line) { flushPara(); closeList(); return; }
-        if ((m = line.match(/^#{1,6}\s+(.*)$/))) { flushPara(); closeList(); html += '<p class="h">' + inline(m[1]) + '</p>'; return; }
-        if ((m = line.match(/^[-*•]\s+(.*)$/))) { flushPara(); if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; } html += '<li>' + inline(m[1]) + '</li>'; return; }
-        if ((m = line.match(/^\d+[.)]\s+(.*)$/))) { flushPara(); if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; } html += '<li>' + inline(m[1]) + '</li>'; return; }
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim(), m;
+        // 표: "| 칸 | 칸 |" 다음 줄이 "| --- | --- |" 이면 표로 그립니다.
+        if (/^\|/.test(line) && i + 1 < lines.length && /^[\s|:\-]+$/.test(lines[i + 1].trim()) && lines[i + 1].indexOf('-') >= 0) {
+          flushPara(); closeList();
+          var cells = function (l) { return l.replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (x) { return x.trim(); }); };
+          var head = cells(line), body = [];
+          i += 2;
+          while (i < lines.length && /^\|/.test(lines[i].trim())) { body.push(cells(lines[i].trim())); i++; }
+          i--;
+          var w = body.reduce(function (a, r) { return Math.max(a, r.length); }, head.length);
+          var tds = function (r, tag) { var o = ''; for (var k = 0; k < w; k++) o += '<' + tag + '>' + inline(r[k] || '') + '</' + tag + '>'; return o; };
+          html += '<div class="tbl"><table><thead><tr>' + tds(head, 'th') + '</tr></thead><tbody>' +
+            body.map(function (r) { return '<tr>' + tds(r, 'td') + '</tr>'; }).join('') + '</tbody></table></div>';
+          continue;
+        }
+        if (!line) { flushPara(); closeList(); continue; }
+        if ((m = line.match(/^#{1,6}\s+(.*)$/))) { flushPara(); closeList(); html += '<p class="h">' + inline(m[1]) + '</p>'; continue; }
+        if ((m = line.match(/^[-*•]\s+(.*)$/))) { flushPara(); if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; } html += '<li>' + inline(m[1]) + '</li>'; continue; }
+        if ((m = line.match(/^\d+[.)]\s+(.*)$/))) { flushPara(); if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; } html += '<li>' + inline(m[1]) + '</li>'; continue; }
         closeList();
         para.push(line);
-      });
+      }
       flushPara(); closeList();
       return html;
     }
